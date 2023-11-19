@@ -1,0 +1,74 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract EnhancedStorageETH {
+    address public owner;
+    string public storedData;
+    uint256 public creationTimestamp;
+    bool public isLocked;
+
+    enum ContractStatus { Active, Locked, Inactive }
+    ContractStatus public contractStatus;
+
+    event DataStored(address indexed user, string data);
+    event DataDeleted(address indexed deleter);
+    event ContractLocked(address indexed locker);
+    event ContractUnlocked(address indexed unlocker);
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Only the owner can call this function");
+        _;
+    }
+
+    modifier notLocked() {
+        require(contractStatus != ContractStatus.Locked, "Contract is locked and data cannot be modified");
+        _;
+    }
+
+    modifier onlyActive() {
+        require(contractStatus == ContractStatus.Active, "Contract is not active");
+        _;
+    }
+
+    modifier onlyInactive() {
+        require(contractStatus == ContractStatus.Inactive, "Contract is not inactive");
+        _;
+    }
+
+    constructor() {
+        owner = msg.sender;
+        creationTimestamp = block.timestamp;
+        isLocked = false;
+        contractStatus = ContractStatus.Active;
+    }
+
+    function set(string memory newData) external onlyOwner notLocked onlyActive {
+        storedData = newData;
+        emit DataStored(msg.sender, newData);
+    }
+
+    function get() external view returns (string memory) {
+        return storedData;
+    }
+
+    function deleteData() external onlyOwner notLocked onlyActive {
+        delete storedData;
+        emit DataDeleted(msg.sender);
+    }
+
+    function lockContract() external onlyOwner onlyActive {
+        isLocked = true;
+        contractStatus = ContractStatus.Locked;
+        emit ContractLocked(msg.sender);
+    }
+
+    function unlockContract() external onlyOwner onlyActive {
+        isLocked = false;
+        contractStatus = ContractStatus.Active;
+        emit ContractUnlocked(msg.sender);
+    }
+
+    function deactivateContract() external onlyOwner onlyInactive {
+        contractStatus = ContractStatus.Inactive;
+    }
+}
